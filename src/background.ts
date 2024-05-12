@@ -60,7 +60,7 @@ function trackTabSwitching() {
     chrome.tabs.get(activeInfo.tabId, async function (tab) {
       console.log(`Tab switched to: ${tab.url}`);
       const tabData = extractTabData(tab);
-      const category = await postEvent({
+      const category = await categorizeWebsite({
         content: tabData.url,
       });
       const data = { ...tabData, category };
@@ -287,7 +287,7 @@ async function getAllStoredData(): Promise<LogEvent[]> {
   });
 }
 
-async function postEvent(content: any): Promise<string> {
+async function categorizeWebsite(content: any): Promise<string> {
   const url = "http://127.0.0.1:5000/classify";
   const body = JSON.stringify(content);
 
@@ -308,7 +308,7 @@ async function postEvent(content: any): Promise<string> {
       // Assuming the response JSON structure is correct
       if (data.category) {
         console.log("Category received:", data.category);
-        return data; // This will return the response object including the category
+        return data.category; // This will return the response object including the category
       } else {
         console.error("Malformed response, category missing");
         throw new Error("Malformed response, category missing");
@@ -320,34 +320,94 @@ async function postEvent(content: any): Promise<string> {
     return "Other";
   }
 }
+
+async function distractionLevel(content: any): Promise<number> {
+  const url = "http://127.0.0.1:5000/classify_batch";
+  const body = JSON.stringify(content);
+
+  console.log("Posting event:", body);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: body,
+    });
+
+    if (response.status === 200) {
+      console.log("Request successful!");
+      const data = await response.json();
+      // Assuming the response JSON structure is correct
+      if (data.distraction_level) {
+        console.log("Category received:", data.category);
+        return data.distraction_level; // This will return the response object including the category
+      } else {
+        console.error("Malformed response, category missing");
+        throw new Error("Malformed response, category missing");
+      }
+    } else {
+      return 0;
+    }
+  } catch (error) {
+    return 0;
+  }
+}
+
 async function getTopFrequentEventsFromLastTenSeconds(): Promise<any[]> {
   return new Promise((resolve, reject) => {
-    const tenSecondsAgo = Date.now() - 10000; // 10000 milliseconds (10 seconds)
+    const tenSecondsAgo = Date.now() - 60000; // 10000 milliseconds (10 seconds)
     const transaction = db.transaction(["events"], "readonly");
     const store = transaction.objectStore("events");
     const index = store.index("timestamp"); // Ensure this index exists
     const range = IDBKeyRange.lowerBound(tenSecondsAgo);
     const request = index.openCursor(range);
-    const eventFrequency: { [key: string]: number } = {};
 
-    request.onsuccess = (event) => {
+    const eventFrequency: { [url: string]: number } = {};
+    const eventsByUrl: { [url: string]: LogEvent[] } = {}; // Store arrays of events by URL
+
+    request.onsuccess = async (event) => {
       const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
       if (cursor) {
         const data: LogEvent = cursor.value;
-        const eventType = data.type; // Assume 'type' is what you're aggregating by
-        if (eventFrequency[eventType]) {
-          eventFrequency[eventType]++;
-        } else {
-          eventFrequency[eventType] = 1;
+
+        // Filter for only "tab-updated" type events
+        if (data.type === "tab-updated") {
+          const url = data.data.url; // Assume the URL is stored in data.url
+
+          // Increment frequency count
+          if (eventFrequency[url]) {
+            eventFrequency[url]++;
+          } else {
+            eventFrequency[url] = 1;
+          }
+
+          // Store event in the appropriate list
+          if (eventsByUrl[url]) {
+            eventsByUrl[url].push(data);
+          } else {
+            eventsByUrl[url] = [data];
+          }
         }
+
         cursor.continue();
       } else {
-        // No more entries, sort and resolve the top 20
+        // No more entries, sort by URL
         const sortedEvents = Object.keys(eventFrequency)
-          .map((key) => ({ type: key, count: eventFrequency[key] }))
-          .sort((a, b) => b.count - a.count) // Sort by frequency, descending
-          .slice(0, 20); // Top 20 events
-        console.log(`Top 20 events from the last 10 seconds:`, sortedEvents);
+          .map((url) => ({
+            url: url,
+            count: eventFrequency[url],
+            events: eventsByUrl[url], // Include the array of events sorted by URL
+          }))
+          .sort((a, b) => a.url.localeCompare(b.url)); // Sort by URL
+
+        console.log(
+          `Top events from the last 10 seconds sorted by URL:`,
+          sortedEvents
+        );
+        const distraction = await distractionLevel({ content: sortedEvents });
+        console.log("Distraction level: ", distraction);
         resolve(sortedEvents);
       }
     };
@@ -365,7 +425,7 @@ function initTracking() {
   // tabUpdates();
   trackClicks();
   setInterval(saveEventsToIndexedDB, 10000);
-  setInterval(getTopFrequentEventsFromLastTenSeconds, 10000);
+  setInterval(getTopFrequentEventsFromLastTenSeconds, 60000);
 }
 
 // Call the initialize function when the extension is loaded

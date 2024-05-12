@@ -24,7 +24,7 @@ type ClickEventInfo = {
 };
 
 function openDatabase() {
-  const request = indexedDB.open("EventDatabase1", 2); // Increment the version if necessary to trigger onupgradeneeded
+  const request = indexedDB.open("EventDatabase12", 2); // Increment the version if necessary to trigger onupgradeneeded
 
   request.onupgradeneeded = function (event) {
     const db = request.result;
@@ -568,8 +568,6 @@ chrome.runtime.onInstalled.addListener(function (details) {
   }
 });
 
-
-
 // Initialize tracking
 function initTracking() {
   openDatabase();
@@ -578,9 +576,9 @@ function initTracking() {
   trackClicks();
   setInterval(saveEventsToIndexedDB, 10000);
   setInterval(getTopFrequentEventsFromLastTenSeconds, 60000);
-  setInterval(getMostPopularWebsites, 60000);
-  setInterval(getPopularWebsiteCategories, 60000);
-  setInterval(getDistractionsCountPerHour, 60000);
+  // setInterval(getMostPopularWebsites, 60000);
+  // setInterval(getPopularWebsiteCategories, 60000);
+  // setInterval(getDistractionsCountPerHour, 60000);
 }
 
 // Call the initialize function when the extension is loaded

@@ -22,11 +22,12 @@ import { ResponsiveBar } from "@nivo/bar";
 import { ResponsivePie } from "@nivo/pie";
 import { ResponsiveLine } from "@nivo/line";
 import "./styles.css";
+import { data } from "autoprefixer";
 
 const Statistics = () => {
   async function getPopularWebsiteCategories() {
     return new Promise((resolve, reject) => {
-      const openRequest = indexedDB.open("EventDatabase1", 2); // Make sure the version matches
+      const openRequest = indexedDB.open("EventDatabase12", 2); // Make sure the version matches
 
       openRequest.onupgradeneeded = function () {
         // Create the database schema if not already existing
@@ -69,7 +70,11 @@ const Statistics = () => {
             // No more entries
             const sorted = Object.keys(countByCategory)
               .filter(
-                (category) => category !== "undefined" && category !== undefined
+                (category) =>
+                  category !== "undefined" &&
+                  category !== undefined &&
+                  category !== "Browser Extension" &&
+                  category !== "Other"
               )
               .map((category) => ({
                 category,
@@ -88,6 +93,61 @@ const Statistics = () => {
       };
     });
   }
+
+  async function getMostPopularWebsites() {
+    return new Promise((resolve, reject) => {
+      const openRequest = indexedDB.open("EventDatabase12", 2);
+
+      openRequest.onerror = function (event) {
+        console.error("Database error: ", openRequest.error);
+        reject(openRequest.error);
+      };
+
+      openRequest.onsuccess = function () {
+        const db = openRequest.result;
+        const transaction = db.transaction(["events"], "readonly");
+        const store = transaction.objectStore("events");
+        const countByUrl = {};
+
+        const cursorRequest = store.openCursor();
+
+        cursorRequest.onsuccess = function (event) {
+          // @ts-ignore
+          const cursor = event.target.result;
+          if (cursor) {
+            if (cursor.value.type === "tab-updated") {
+              const url = cursor.value.data.baseUrl || "Unknown URL";
+              countByUrl[url] = (countByUrl[url] || 0) + 1;
+              cursor.continue();
+            } else {
+              cursor.continue(); // Continue cursor if not a 'tab-updated' type
+            }
+          } else {
+            // No more entries
+            const sorted = Object.keys(countByUrl)
+              .filter(
+                (url) =>
+                  url !== "undefined" &&
+                  url !== undefined &&
+                  url !== "Unknown URL"
+              )
+              ?.map((url) => ({
+                url,
+                count: countByUrl[url],
+              }))
+              .sort((a, b) => b.count - a.count);
+            resolve(sorted);
+          }
+        };
+
+        cursorRequest.onerror = function () {
+          console.error("Cursor request failed.");
+          reject(new Error("Cursor request failed."));
+        };
+      };
+    });
+  }
+  const [websites, setWebsites] = useState<any[]>([]);
 
   const [categories, setCategories] = useState<any>([]);
   const [loading, setLoading] = useState(true);
@@ -108,6 +168,22 @@ const Statistics = () => {
       })
       .catch((error) => {
         console.error("Failed to fetch categories:", error);
+        setLoading(false);
+      });
+    getMostPopularWebsites()
+      .then((websites: any) => {
+        const sites = websites?.map((website) => {
+          return {
+            name: website.url,
+            count: website.count,
+          };
+        });
+        setWebsites(sites);
+        console.log("Fetched websites:", sites);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch websites:", error);
         setLoading(false);
       });
   }, []);
@@ -164,26 +240,34 @@ const Statistics = () => {
       <main className="flex-1 overflow-auto bg-gray-100 p-6 dark:bg-gray-900">
         <div className="grid gap-6">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>Most Popular Websites</CardTitle>
-                <CardDescription>Top websites visited</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <BarChart className="aspect-[4/3]" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Popular Themes</CardTitle>
-                <CardDescription>
-                  Distribution of website themes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PieChart className="aspect-square" />
-              </CardContent>
-            </Card>
+            {websites && categories && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Most Popular Websites</CardTitle>
+                    <CardDescription>Top websites visited</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <BarChart
+                      className="aspect-[4/3]"
+                      data={websites.slice(0, 5)}
+                    />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Popular Themes</CardTitle>
+                    <CardDescription>
+                      Distribution of website themes
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <PieChart className="aspect-square" data={categories} />
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Distractions Count</CardTitle>
@@ -196,14 +280,19 @@ const Statistics = () => {
               </CardContent>
             </Card>
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Productive Time</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <BarChart className="aspect-[4/3]" />
-            </CardContent>
-          </Card>
+          {websites && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Productive Time</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BarChart
+                  className="aspect-[4/3]"
+                  data={websites.slice(0, 9)}
+                />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>
@@ -214,14 +303,7 @@ function BarChart(props: any) {
   return (
     <div {...props}>
       <ResponsiveBar
-        data={[
-          { name: "Jan", count: 111 },
-          { name: "Feb", count: 157 },
-          { name: "Mar", count: 129 },
-          { name: "Apr", count: 150 },
-          { name: "May", count: 119 },
-          { name: "Jun", count: 72 },
-        ]}
+        data={props.data}
         keys={["count"]}
         indexBy="name"
         margin={{ top: 0, right: 0, bottom: 40, left: 40 }}
@@ -424,14 +506,7 @@ function PieChart(props, data: any) {
   return (
     <div {...props}>
       <ResponsivePie
-        data={[
-          { id: "Jan", value: 111 },
-          { id: "Feb", value: 157 },
-          { id: "Mar", value: 129 },
-          { id: "Apr", value: 150 },
-          { id: "May", value: 119 },
-          { id: "Jun", value: 72 },
-        ]}
+        data={props.data}
         sortByValue
         margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
         cornerRadius={0}

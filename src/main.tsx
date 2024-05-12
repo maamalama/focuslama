@@ -24,8 +24,19 @@ const Main = () => {
     }
   };
 
+  const containerStyle = {
+    backgroundImage:
+      "url('https://phhaadzdzbqylxtqzsms.supabase.co/storage/v1/object/public/resume/hack/llama_1.webp')", // Replace with your actual image URL
+    backgroundSize: "cover", // Cover the entire container
+    backgroundPosition: "center", // Center the background image
+    backgroundRepeat: "no-repeat", // Do not repeat the image
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-screen gap-6">
+    <div
+      className="flex flex-col items-center justify-center h-screen gap-6 w-screen"
+      style={containerStyle}
+    >
       <Button variant="outline">
         <CalendarIcon className="mr-2 h-5 w-5" />
         Session
@@ -34,9 +45,8 @@ const Main = () => {
             <ChevronDownIcon className="ml-2 h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem>Today</DropdownMenuItem>
-            <DropdownMenuItem>This Week</DropdownMenuItem>
-            <DropdownMenuItem>This Month</DropdownMenuItem>
+            <DropdownMenuItem>Work</DropdownMenuItem>
+            <DropdownMenuItem>Rest</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </Button>
@@ -48,9 +58,9 @@ const Main = () => {
             <ChevronDownIcon className="ml-2 h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem>Light</DropdownMenuItem>
-            <DropdownMenuItem>Dark</DropdownMenuItem>
-            <DropdownMenuItem>System</DropdownMenuItem>
+            <DropdownMenuItem>Message</DropdownMenuItem>
+            <DropdownMenuItem>Angry Llama</DropdownMenuItem>
+            <DropdownMenuItem>Start Over</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </Button>

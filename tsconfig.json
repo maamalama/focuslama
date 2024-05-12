@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "noImplicitAny": false,
     "strict": true,
     "target": "es6",
     "moduleResolution": "bundler",
@@ -10,6 +11,10 @@
     "outDir": "dist/js",
     "noEmitOnError": true,
     "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["./*"]
+    },
     "typeRoots": ["node_modules/@types"]
   }
 }

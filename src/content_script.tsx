@@ -14,3 +14,16 @@ document.addEventListener("click", (event) => {
   // Send this data to the background script
   chrome.runtime.sendMessage(clickData);
 });
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.command === "getMostPopularWebsites") {
+    getMostPopularWebsites()
+      .then((data) => {
+        sendResponse({ success: true, data: data });
+      })
+      .catch((error) => {
+        sendResponse({ success: false, error: error.toString() });
+      });
+    return true; // Return true to indicate you wish to send a response asynchronously
+  }
+});

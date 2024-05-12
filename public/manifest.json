@@ -37,7 +37,15 @@
     "activeTab",
     "webNavigation",
     "scripting",
-    "downloads"
+    "downloads",
+    "notifications"
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["dist/angry-notification-image.jpg", "statistics.html"],
+      "matches": ["<all_urls>"]
+    }
   ],
 
   "host_permissions": ["<all_urls>"]

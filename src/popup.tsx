@@ -19,7 +19,7 @@ const Popup = () => {
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <div className="flex items-center justify-center h-[700px] w-[400px] bg-gray-200 shadow-lg rounded-lg">
+      <div className="flex items-center justify-center h-[700px] w-[400px] shadow-lg rounded-lg">
         <Main />
       </div>
     </div>

@@ -1,46 +1,63 @@
 import React, { useState } from "react";
+import { Button } from "./components/ui/button";
+import {
+  CalendarIcon,
+  ChevronDownIcon,
+  MoonIcon,
+  BarChartIcon,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./components/ui/dropdown-menu";
 
 const Main = () => {
   const [sessionOpen, setSessionOpen] = useState(false);
   const [modeOpen, setModeOpen] = useState(false);
 
+  const openStatistics = () => {
+    // Ensure this code runs only within a Chrome Extension environment
+    if (chrome.tabs) {
+      chrome.tabs.create({ url: chrome.runtime.getURL("statistics.html") });
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center h-screen space-y-4 w-48">
-      {/* Session Button */}
-      <button
-        onClick={() => setSessionOpen(!sessionOpen)}
-        className="flex text-center justify-center w-full items-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-full text-lg shadow-lg hover:bg-blue-700 transition-colors duration-300"
-      >
-        <i className="fas fa-user-clock"></i>
-        <span>Session</span>
-      </button>
-      {sessionOpen && (
-        <select className="block w-full mt-1 bg-white border-gray-300 rounded shadow">
-          <option>Option 1</option>
-          <option>Option 2</option>
-        </select>
-      )}
-
-      {/* Mode Button */}
-      <button
-        onClick={() => setModeOpen(!modeOpen)}
-        className="flex text-center justify-center w-full items-center space-x-2 bg-green-600 text-white px-6 py-3 rounded-full text-lg shadow-lg hover:bg-green-700 transition-colors duration-300"
-      >
-        <i className="fas fa-cogs"></i>
-        <span>Mode</span>
-      </button>
-      {modeOpen && (
-        <select className="block w-full mt-1 bg-white border-gray-300 rounded shadow">
-          <option>Mode 1</option>
-          <option>Mode 2</option>
-        </select>
-      )}
-
-      {/* Statistics Button */}
-      <button className="flex text-center justify-center w-full items-center space-x-2 bg-red-600 text-white px-6 py-3 rounded-full text-lg shadow-lg hover:bg-red-700 transition-colors duration-300">
-        <i className="fas fa-chart-bar"></i>
-        <span>Statistics</span>
-      </button>
+    <div className="flex flex-col items-center justify-center h-screen gap-6">
+      <Button variant="outline">
+        <CalendarIcon className="mr-2 h-5 w-5" />
+        Session
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <ChevronDownIcon className="ml-2 h-4 w-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem>Today</DropdownMenuItem>
+            <DropdownMenuItem>This Week</DropdownMenuItem>
+            <DropdownMenuItem>This Month</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </Button>
+      <Button variant="outline">
+        <MoonIcon className="mr-2 h-5 w-5" />
+        Mode
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <ChevronDownIcon className="ml-2 h-4 w-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem>Light</DropdownMenuItem>
+            <DropdownMenuItem>Dark</DropdownMenuItem>
+            <DropdownMenuItem>System</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </Button>
+      <Button variant="outline" onClick={openStatistics}>
+        <BarChartIcon className="mr-2 h-5 w-5" />
+        Statistics
+      </Button>
     </div>
   );
 };

@@ -10,6 +10,7 @@ type LogEvent = {
 type TabEventInfo = {
   id?: number;
   url?: string;
+  baseUrl?: string;
   title?: string;
   favIconUrl?: string;
   content: string;
@@ -23,7 +24,7 @@ type ClickEventInfo = {
 };
 
 function openDatabase() {
-  const request = indexedDB.open("EventDatabase", 2); // Increment the version if necessary to trigger onupgradeneeded
+  const request = indexedDB.open("EventDatabase1", 2); // Increment the version if necessary to trigger onupgradeneeded
 
   request.onupgradeneeded = function (event) {
     const db = request.result;
@@ -37,9 +38,13 @@ function openDatabase() {
       store = request?.transaction?.objectStore("events");
     }
 
-    // Create an index on the 'timestamp' field if it doesn't exist
-    if (!store?.indexNames.contains("timestamp")) {
-      store?.createIndex("timestamp", "timestamp", { unique: false });
+    if (!store.indexNames.contains("url")) {
+      store.createIndex("url", "data.baseUrl", { unique: false });
+    }
+
+    // Ensure there is an index on 'timestamp' if it doesn't exist for other queries
+    if (!store.indexNames.contains("timestamp")) {
+      store.createIndex("timestamp", "timestamp", { unique: false });
     }
   };
 
@@ -78,6 +83,7 @@ const extractTabData = (tab: chrome.tabs.Tab): TabEventInfo => {
     id: tab.id,
     title: tab.title,
     url: tab.url,
+    baseUrl: getBaseUrl(tab.url) || tab.url,
     favIconUrl: tab.favIconUrl,
     content: "",
   };
@@ -104,6 +110,16 @@ const extractTabData = (tab: chrome.tabs.Tab): TabEventInfo => {
 //     }
 //   });
 // }
+
+function getBaseUrl(urlString) {
+  try {
+    const url = new URL(urlString);
+    return `${url.protocol}//${url.host}`; // Returns the base URL including protocol and host
+  } catch (error) {
+    console.error("Invalid URL:", error);
+    return ""; // Return null or handle the error as needed
+  }
+}
 
 function trackClicks() {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -406,10 +422,19 @@ async function getTopFrequentEventsFromLastTenSeconds(): Promise<any[]> {
           `Top events from the last 10 seconds sorted by URL:`,
           sortedEvents
         );
+
         if (sortedEvents.length > 0) {
           const distraction = await distractionLevel({
             content: sortedEvents,
           });
+          if (distraction >= 6) {
+            await fetch("http://localhost:8090/trigger-widget")
+              .then((response) => response.text())
+              .then((text) => console.log(text))
+              .catch((err) =>
+                console.error("Error triggering the widget:", err)
+              );
+          }
           console.log("Distraction level: ", distraction);
         }
 
@@ -423,6 +448,128 @@ async function getTopFrequentEventsFromLastTenSeconds(): Promise<any[]> {
   });
 }
 
+function showNotification() {
+  chrome.notifications.create(
+    "",
+    {
+      type: "image",
+      iconUrl:
+        "https://phhaadzdzbqylxtqzsms.supabase.co/storage/v1/object/public/resume/hack/angry-notification-image.jpg",
+      title: "Important Notification",
+      message: "Here is something you might want to check out!",
+    },
+    function (notificationId) {
+      console.log(`Notification displayed: ${notificationId}`);
+    }
+  );
+}
+
+async function getMostPopularWebsites() {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["events"], "readonly");
+    const store = transaction.objectStore("events");
+    const countByUrl = {};
+
+    store.openCursor().onsuccess = function (event) {
+      //@ts-ignore
+      const cursor = event.target.result;
+      if (cursor && cursor.value.type === "tab-updated") {
+        console.log("popular cursor", cursor.value);
+        // Make sure to safely access baseUrl
+        const url = cursor.value.data.baseUrl || "Unknown URL";
+        countByUrl[url] = (countByUrl[url] || 0) + 1;
+        cursor.continue();
+      } else {
+        // Convert counts to an array and sort by count
+        const sorted = Object.keys(countByUrl)
+          .map((url) => ({
+            url,
+            count: countByUrl[url],
+          }))
+          .sort((a, b) => b.count - a.count);
+        console.log(`Most popular websites:`, sorted);
+        resolve(sorted);
+      }
+    };
+
+    transaction.onerror = function (event) {
+      reject(transaction.error);
+    };
+  });
+}
+
+async function getPopularWebsiteCategories() {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["events"], "readonly");
+    const store = transaction.objectStore("events");
+    const countByCategory = {};
+
+    store.openCursor().onsuccess = function (event) {
+      //@ts-ignore
+      const cursor = event.target.result;
+      if (cursor && cursor.value.type === "tab-updated") {
+        console.log("cursor", cursor);
+        const category = cursor.value.data.category; // Assuming category data is stored
+        countByCategory[category] = (countByCategory[category] || 0) + 1;
+        cursor.continue();
+      } else {
+        const sorted = Object.keys(countByCategory)
+          .filter((category) => category !== "undefined")
+          .map((category) => ({
+            category,
+            count: countByCategory[category],
+          }))
+          .sort((a, b) => b.count - a.count);
+        console.log(`Popular website categories:`, sorted);
+        resolve(sorted);
+      }
+    };
+
+    transaction.onerror = function (event) {
+      reject(transaction.error);
+    };
+  });
+}
+
+async function getDistractionsCountPerHour() {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["events"], "readonly");
+    const store = transaction.objectStore("events");
+    const distractionsByHour = {};
+
+    store.openCursor().onsuccess = function (event) {
+      //@ts-ignore
+      const cursor = event.target.result;
+      if (cursor) {
+        const timestamp = new Date(cursor.value.data.timestamp);
+        const hour = timestamp.getHours();
+        distractionsByHour[hour] = (distractionsByHour[hour] || 0) + 1;
+        cursor.continue();
+      } else {
+        resolve(distractionsByHour);
+      }
+    };
+
+    transaction.onerror = function (event) {
+      reject(transaction.error);
+    };
+  });
+}
+
+function askNotificationPermission() {
+  Notification.requestPermission().then((result) => {
+    console.log(result);
+  });
+}
+
+chrome.runtime.onInstalled.addListener(function (details) {
+  if (details.reason === "install") {
+    askNotificationPermission();
+  }
+});
+
+
+
 // Initialize tracking
 function initTracking() {
   openDatabase();
@@ -431,6 +578,9 @@ function initTracking() {
   trackClicks();
   setInterval(saveEventsToIndexedDB, 10000);
   setInterval(getTopFrequentEventsFromLastTenSeconds, 60000);
+  setInterval(getMostPopularWebsites, 60000);
+  setInterval(getPopularWebsiteCategories, 60000);
+  setInterval(getDistractionsCountPerHour, 60000);
 }
 
 // Call the initialize function when the extension is loaded

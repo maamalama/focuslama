@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import "./styles.css";
 
 const Popup = () => {
   const [count, setCount] = useState(0);
@@ -39,8 +40,8 @@ const Popup = () => {
         <li>Current Time: {new Date().toLocaleTimeString()}</li>
       </ul>
       <button
+        className="btn btn-primary bg-green-400"
         onClick={() => setCount(count + 1)}
-        style={{ marginRight: "5px" }}
       >
         count up
       </button>

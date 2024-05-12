@@ -406,8 +406,13 @@ async function getTopFrequentEventsFromLastTenSeconds(): Promise<any[]> {
           `Top events from the last 10 seconds sorted by URL:`,
           sortedEvents
         );
-        const distraction = await distractionLevel({ content: sortedEvents });
-        console.log("Distraction level: ", distraction);
+        if (sortedEvents.length > 0) {
+          const distraction = await distractionLevel({
+            content: sortedEvents,
+          });
+          console.log("Distraction level: ", distraction);
+        }
+
         resolve(sortedEvents);
       }
     };

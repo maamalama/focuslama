@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import Main from "./main";
 
 const Popup = () => {
   const [count, setCount] = useState(0);
@@ -16,36 +17,10 @@ const Popup = () => {
     });
   }, []);
 
-  // const changeBackground = () => {
-  //   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-  //     const tab = tabs[0];
-  //     if (tab.id) {
-  //       chrome.tabs.sendMessage(
-  //         tab.id,
-  //         {
-  //           color: "#555555",
-  //         },
-  //         (msg) => {
-  //           console.log("result message:", msg);
-  //         }
-  //       );
-  //     }
-  //   });
-  // };
-
   return (
-    <>
-      <ul style={{ minWidth: "700px" }}>
-        <li>Current URL: {currentURL}</li>
-        <li>Current Time: {new Date().toLocaleTimeString()}</li>
-      </ul>
-      <button
-        className="btn btn-primary bg-green-400"
-        onClick={() => setCount(count + 1)}
-      >
-        count up
-      </button>
-    </>
+    <div className="h-[700px] w-[400px]">
+      <Main />
+    </div>
   );
 };
 

@@ -10,10 +10,6 @@
     "outDir": "dist/js",
     "noEmitOnError": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./*"]
-    },
     "typeRoots": ["node_modules/@types"]
   }
 }
